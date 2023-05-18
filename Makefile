@@ -1,4 +1,4 @@
-.PHONY: all deps test-deps test deploy run reset repl
+.PHONY: all deps test-deps test deploy run reset
 
 DEVICE ?= auto
 DEPS = umqtt.simple
@@ -6,7 +6,7 @@ TEST_DEPS = unittest
 
 mpremote = mpremote connect $(DEVICE)
 
-all: deps deploy reset repl
+all: deps deploy reset
 
 deps: $(DEPS)
 
@@ -30,6 +30,3 @@ run:
 
 reset:
 	$(mpremote) reset
-
-repl:
-	$(mpremote)
