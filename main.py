@@ -33,6 +33,7 @@ buf = bytearray((oled_height // 8) * oled_width)
 fbuf = framebuf.FrameBuffer1(buf, oled_width, oled_height)
 
 sta_if = network.WLAN(network.STA_IF)
+network_status = "OFF"
 
 spi = SPI(1)
 cs = Pin(15, mode=Pin.OUT, value=1)
@@ -48,7 +49,7 @@ mqtt_prefix = settings["mqtt"]["prefix"]
 
 
 def on_message(topic, msg):
-    print((topic, msg))
+    print(f"MQTT <- [{topic}] {msg}")
     try:
         msg = json.loads(msg)
     except:
@@ -61,7 +62,7 @@ def on_message(topic, msg):
 
 
 def loop():
-    global mqtt, state, last_update
+    global mqtt, network_status, state, last_update
 
     state_changed = False
     PW0 = pot.read(0)
@@ -75,15 +76,20 @@ def loop():
         state_changed = True
 
     if not sta_if.active():
+        print("Connecting to WiFi")
         sta_if.active(True)
         sta_if.connect(settings["wifi"]["ssid"], settings["wifi"]["password"])
 
-    network_status = "OFF"
-    if sta_if.active():
+    if sta_if.active() and not sta_if.isconnected():
         network_status = "ACT"
     if sta_if.isconnected():
-        network_status = "OK"
+        if network_status != "OK":
+            ip, _, _, _ = sta_if.ifconfig()
+            print(f"WIFI Connected to {sta_if.config('ssid')}")
+            print(f"IP Address: {ip}")
+            network_status = "OK"
         if not mqtt:
+            print("Starting MQTT client")
             mqtt = MQTTClient(mqtt_client_id, mqtt_broker, keepalive=MQTT_KEEPALIVE)
             mqtt.set_callback(on_message)
             mqtt.connect()
@@ -161,10 +167,11 @@ def loop():
             )
 
         if state_changed or utime.time() - last_update >= MQTT_UPDATE_INTERVAL:
+            topic = f"{mqtt_prefix}/state"
+            payload = json.dumps(state)
+            print(f"MQTT -> [{topic}] {payload}")
             mqtt.publish(f"{mqtt_prefix}/status".encode(), b"online", retain=True)
-            mqtt.publish(
-                f"{mqtt_prefix}/state".encode(), json.dumps(state).encode(), retain=True
-            )
+            mqtt.publish(topic.encode(), payload.encode(), retain=True)
 
             last_update = utime.time()
         mqtt.check_msg()
