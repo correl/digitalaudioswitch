@@ -87,6 +87,7 @@ def loop():
             print("Starting MQTT client")
             mqtt = MQTTClient(mqtt_client_id, mqtt_broker, keepalive=MQTT_KEEPALIVE)
             mqtt.set_callback(on_message)
+            mqtt.set_last_will(f"{mqtt_prefix}/status", b"offline", retain=True)
             mqtt.connect()
             mqtt.subscribe(f"{mqtt_prefix}/set")
             mqtt_device = {
