@@ -71,6 +71,22 @@ class TerminalControl:
         )
 
 
+def command_bytes(address: int, command: int, data: int = 0x0) -> bytearray:
+    """Translate an address, command, and data into bytes to send.
+
+    - Address is a 4-bit memory address.
+    - Command is a 2-bit command code.
+    - Data is 2 bits for increment and decrement operations (ignored), and
+      10 bits for read and write operations.
+
+    """
+    command_byte = address << 4 & 0b11110000 | command << 2 & 0b00001100
+    if command in (0b00, 0b11):
+        # Include data byte for 10 total bits of data
+        return bytearray([command_byte | (0b11 & data >> 8), data & 0xFF])
+    return bytearray([command_byte])
+
+
 class MCP4:
     """MicroPython MCP413X/415X/423X/425X SPI driver"""
 
@@ -88,21 +104,6 @@ class MCP4:
         self.spi = spi
         self.cs = cs
 
-    def _bytes(self, address: int, command: int, data: int = 0x0) -> bytearray:
-        """Translate an address, command, and data into bytes to send.
-
-        - Address is a 4-bit memory address.
-        - Command is a 2-bit command code.
-        - Data is 2 bits for increment and decrement operations (ignored), and
-          10 bits for read and write operations.
-
-        """
-        command_byte = address << 4 & 0b11110000 | command << 2 & 0b00001100
-        if command in (0b00, 0b11):
-            # Include data byte for 10 total bits of data
-            return bytearray([command_byte | (0b11 & data >> 8), data & 0xFF])
-        return bytearray([command_byte])
-
     def _write(self, data: bytearray) -> bytearray:
         """Write data to the SPI interface, returning its output."""
         output = bytearray(len(data))
@@ -112,7 +113,7 @@ class MCP4:
     def do(self, address: int, command: int, data: int = 0x0) -> int:
         """Execute a command on the MCP4, returning its integer result."""
         self.cs(0)
-        output = self._write(self._bytes(address, command, data))
+        output = self._write(command_bytes(address, command, data))
         self.cs(1)
 
         OK = 0b11111110
