@@ -10,6 +10,7 @@ from umqtt.simple import MQTTClient
 
 import ssd1306
 import mcp4
+from statetree import StateTree
 
 VOLUME_MAX = 128
 
@@ -17,12 +18,15 @@ MQTT_KEEPALIVE = 60
 MQTT_UPDATE_INTERVAL = 60
 
 
-state = {
-    "volume": {
-        "left": 0,
-        "right": 0,
+state = StateTree(
+    {
+        "network": "OFF",
+        "volume": {
+            "left": 0,
+            "right": 0,
+        },
     }
-}
+)
 last_update = 0
 
 i2c = SoftI2C(sda=Pin(2), scl=Pin(16))
@@ -33,7 +37,6 @@ buf = bytearray((oled_height // 8) * oled_width)
 fbuf = framebuf.FrameBuffer1(buf, oled_width, oled_height)
 
 sta_if = network.WLAN(network.STA_IF)
-network_status = "OFF"
 
 spi = SPI(1)
 cs = Pin(15, mode=Pin.OUT, value=1)
@@ -62,18 +65,10 @@ def on_message(topic, msg):
 
 
 def loop():
-    global mqtt, network_status, state, last_update
+    global mqtt, state, last_update
 
-    state_changed = False
-    PW0 = pot.read(0)
-    PW1 = pot.read(1)
-
-    if PW0 != state["volume"]["left"]:
-        state["volume"]["left"] = PW0
-        state_changed = True
-    if PW1 != state["volume"]["right"]:
-        state["volume"]["right"] = PW1
-        state_changed = True
+    state["volume"]["left"] = pot.read(0)
+    state["volume"]["right"] = pot.read(1)
 
     if not sta_if.active():
         print("Connecting to WiFi")
@@ -81,13 +76,13 @@ def loop():
         sta_if.connect(settings["wifi"]["ssid"], settings["wifi"]["password"])
 
     if sta_if.active() and not sta_if.isconnected():
-        network_status = "ACT"
+        state["network"] = "ACT"
     if sta_if.isconnected():
-        if network_status != "OK":
+        if state["network"] != "OK":
             ip, _, _, _ = sta_if.ifconfig()
             print(f"WIFI Connected to {sta_if.config('ssid')}")
             print(f"IP Address: {ip}")
-            network_status = "OK"
+            state["network"] = "OK"
         if not mqtt:
             print("Starting MQTT client")
             mqtt = MQTTClient(mqtt_client_id, mqtt_broker, keepalive=MQTT_KEEPALIVE)
@@ -166,20 +161,21 @@ def loop():
                 retain=True,
             )
 
-        if state_changed or utime.time() - last_update >= MQTT_UPDATE_INTERVAL:
-            topic = f"{mqtt_prefix}/state"
-            payload = json.dumps(state)
+        if state.changed or utime.time() - last_update >= MQTT_UPDATE_INTERVAL:
+            topic = f"{mqtt_prefix}/state".encode()
+            payload = json.dumps(state.dictionary).encode()
             print(f"MQTT -> [{topic}] {payload}")
-            mqtt.publish(f"{mqtt_prefix}/status".encode(), b"online", retain=True)
-            mqtt.publish(topic.encode(), payload.encode(), retain=True)
-
+            mqtt.publish(f"{mqtt_prefix}/status", b"online", retain=True)
+            mqtt.publish(topic, payload, retain=True)
             last_update = utime.time()
         mqtt.check_msg()
-    oled.fill(0)
-    oled.text(f"PW0: {PW0}", 0, 0)
-    oled.text(f"PW1: {PW1}", 0, 10)
-    oled.text(f"NET: {network_status}", 65, 0)
-    oled.show()
+    if state.changed:
+        oled.fill(0)
+        oled.text(f"LFT: {state['volume']['left']}", 0, 0)
+        oled.text(f"RGT: {state['volume']['right']}", 0, 10)
+        oled.text(f"NET: {state['network']}", 65, 0)
+        oled.show()
+    state.clean()
 
 
 while True:
