@@ -12,10 +12,10 @@ import ssd1306
 import mcp4
 from statetree import StateTree
 
-VOLUME_MAX = 128
+VOLUME_MAX = const(128)
 
-MQTT_KEEPALIVE = 60
-MQTT_UPDATE_INTERVAL = 60
+MQTT_KEEPALIVE = const(60)
+MQTT_UPDATE_INTERVAL = const(60)
 
 
 state = StateTree(
@@ -30,8 +30,8 @@ state = StateTree(
 last_update = 0
 
 i2c = SoftI2C(sda=Pin(2), scl=Pin(16))
-oled_width = 128
-oled_height = 32
+oled_width = const(128)
+oled_height = const(32)
 oled = ssd1306.SSD1306_I2C(oled_width, oled_height, i2c)
 buf = bytearray((oled_height // 8) * oled_width)
 fbuf = framebuf.FrameBuffer1(buf, oled_width, oled_height)
@@ -172,9 +172,19 @@ def loop():
         mqtt.check_msg()
     if state.changed:
         oled.fill(0)
-        oled.text(f"LFT: {state['volume']['left']}", 0, 0)
-        oled.text(f"RGT: {state['volume']['right']}", 0, 10)
-        oled.text(f"NET: {state['network']}", 65, 0)
+        oled.framebuf.rect(10, 0, 92, 8, 1)
+        oled.framebuf.rect(
+            12, 2, round(state["volume"]["left"] / VOLUME_MAX * 88), 4, 1, True
+        )
+        oled.framebuf.rect(10, 10, 92, 8, 1)
+        oled.framebuf.rect(
+            12, 12, round(state["volume"]["right"] / VOLUME_MAX * 88), 4, 1, True
+        )
+        oled.text("L", 0, 0)
+        oled.text("R", 0, 10)
+        oled.text(f"{state['volume']['left']:3d}", 104, 0)
+        oled.text(f"{state['volume']['right']:3d}", 104, 10)
+        oled.text(f"WiFi: {state['network']}", 0, 20)
         oled.show()
     state.clean()
 
