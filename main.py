@@ -10,6 +10,7 @@ from umqtt.simple import MQTTClient
 
 import ssd1306
 import mcp4
+from rotary_irq_esp import RotaryIRQ
 from statetree import StateTree
 
 VOLUME_MAX = const(128)
@@ -29,12 +30,24 @@ state = StateTree(
 )
 last_update = 0
 
-i2c = SoftI2C(sda=Pin(2), scl=Pin(16))
-oled_width = const(128)
-oled_height = const(32)
-oled = ssd1306.SSD1306_I2C(oled_width, oled_height, i2c)
-buf = bytearray((oled_height // 8) * oled_width)
-fbuf = framebuf.FrameBuffer1(buf, oled_width, oled_height)
+rotary = RotaryIRQ(
+    33,
+    32,
+    0,
+    max_val=128,
+    range_mode=RotaryIRQ.RANGE_BOUNDED,
+    pull_up=True,
+)
+rotary_value = rotary.value()
+
+try:
+    i2c = SoftI2C(sda=Pin(21), scl=Pin(22))
+    oled_width = const(128)
+    oled_height = const(32)
+    oled = ssd1306.SSD1306_I2C(oled_width, oled_height, i2c)
+except Exception as e:
+    print("WARNING: OLED unavailable:", e)
+    oled = None
 
 sta_if = network.WLAN(network.STA_IF)
 
@@ -65,10 +78,24 @@ def on_message(topic, msg):
 
 
 def loop():
-    global mqtt, state, last_update
+    global mqtt, state, last_update, rotary, rotary_value
 
     state["volume"]["left"] = pot.read(0)
     state["volume"]["right"] = pot.read(1)
+
+    if state.changed:
+        # Volume changed externally
+        rotary.set(value=max(state["volume"]["left"], state["volume"]["right"]))
+        rotary_value = rotary.value()
+
+    new_value = rotary.value()
+    if rotary_value != new_value:
+        print("Rotary:", new_value)
+        state["volume"]["left"] = new_value
+        state["volume"]["right"] = new_value
+        pot.write(0, new_value)
+        pot.write(1, new_value)
+        rotary_value = new_value
 
     if not sta_if.active():
         print("Connecting to WiFi")
@@ -170,7 +197,7 @@ def loop():
             mqtt.publish(topic, payload, retain=True)
             last_update = utime.time()
         mqtt.check_msg()
-    if state.changed:
+    if oled and state.changed:
         oled.fill(0)
         oled.framebuf.rect(10, 0, 92, 8, 1)
         oled.framebuf.rect(
@@ -191,4 +218,4 @@ def loop():
 
 while True:
     loop()
-    utime.sleep(1)
+    utime.sleep(0.1)
