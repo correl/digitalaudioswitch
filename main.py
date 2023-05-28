@@ -8,6 +8,7 @@ import utime
 
 from umqtt.simple import MQTTClient
 
+import cd4052
 import ssd1306
 import mcp4
 from rotary_irq_esp import RotaryIRQ
@@ -25,7 +26,9 @@ state = StateTree(
         "volume": {
             "left": 0,
             "right": 0,
+            "muted": False,
         },
+        "channel": 0,
     }
 )
 last_update = 0
@@ -48,6 +51,9 @@ try:
 except Exception as e:
     print("WARNING: OLED unavailable:", e)
     oled = None
+
+switch = cd4052.CD4052(18, 19, 23)
+switch.select(state["channel"])
 
 sta_if = network.WLAN(network.STA_IF)
 
@@ -75,6 +81,10 @@ def on_message(topic, msg):
             pot.write(0, volume["left"])
         if isinstance(volume.get("right"), int):
             pot.write(1, volume["right"])
+        if isinstance(volume.get("muted"), bool):
+            switch.mute(volume["muted"])
+    if isinstance(msg.get("channel"), int):
+        switch.select(msg["channel"])
 
 
 def loop():
@@ -82,6 +92,8 @@ def loop():
 
     state["volume"]["left"] = pot.read(0)
     state["volume"]["right"] = pot.read(1)
+    state["volume"]["muted"] = switch.muted()
+    state["channel"] = switch.channel()
 
     if state.changed:
         # Volume changed externally
