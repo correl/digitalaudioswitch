@@ -19,16 +19,16 @@ VOLUME_MAX = const(128)
 MQTT_KEEPALIVE = const(60)
 MQTT_UPDATE_INTERVAL = const(60)
 
-
+channels = ["LINE 1", "LINE 2", "LINE 3", "PHONO"]
 state = StateTree(
     {
         "network": "OFF",
         "volume": {
             "left": 0,
             "right": 0,
-            "muted": False,
+            "muted": "OFF",
         },
-        "channel": 0,
+        "channel": channels[0],
     }
 )
 last_update = 0
@@ -53,7 +53,7 @@ except Exception as e:
     oled = None
 
 switch = cd4052.CD4052(18, 19, 23)
-switch.select(state["channel"])
+switch.select(0)
 
 sta_if = network.WLAN(network.STA_IF)
 
@@ -81,10 +81,13 @@ def on_message(topic, msg):
             pot.write(0, volume["left"])
         if isinstance(volume.get("right"), int):
             pot.write(1, volume["right"])
-        if isinstance(volume.get("muted"), bool):
-            switch.mute(volume["muted"])
-    if isinstance(msg.get("channel"), int):
-        switch.select(msg["channel"])
+        if isinstance(volume.get("muted"), str):
+            switch.mute(volume["muted"] == "ON")
+    if isinstance(msg.get("channel"), str):
+        try:
+            switch.select(channels.index(msg["channel"]))
+        except ValueError:
+            print("WARNING: Attempted to select invalid channel", msg["channel"])
 
 
 def loop():
@@ -92,8 +95,8 @@ def loop():
 
     state["volume"]["left"] = pot.read(0)
     state["volume"]["right"] = pot.read(1)
-    state["volume"]["muted"] = switch.muted()
-    state["channel"] = switch.channel()
+    state["volume"]["muted"] = "ON" if switch.muted() else "OFF"
+    state["channel"] = channels[switch.channel()]
 
     if state.changed:
         # Volume changed externally
@@ -195,6 +198,42 @@ def loop():
                         "mode": "slider",
                         "step": 1,
                         "unique_id": "digital-audio-switch-volume-master",
+                        "device": mqtt_device,
+                    }
+                ).encode(),
+                retain=True,
+            )
+            mqtt.publish(
+                f"homeassistant/switch/digital-audio-switch/mute/config".encode(),
+                json.dumps(
+                    {
+                        "name": "Digital Audio Switch Mute",
+                        "command_topic": f"{mqtt_prefix}/set",
+                        "payload_on": '{"volume": {"muted": "ON"}}',
+                        "payload_off": '{"volume": {"muted": "OFF"}}',
+                        "state_on": "ON",
+                        "state_off": "OFF",
+                        "state_topic": f"{mqtt_prefix}/state",
+                        "value_template": "{{ value_json.volume.muted }}",
+                        "availability_topic": f"{mqtt_prefix}/status",
+                        "unique_id": "digital-audio-switch-volume-mute",
+                        "device": mqtt_device,
+                    }
+                ).encode(),
+                retain=True,
+            )
+            mqtt.publish(
+                f"homeassistant/select/digital-audio-switch/channel/config".encode(),
+                json.dumps(
+                    {
+                        "name": "Digital Audio Switch Channel",
+                        "command_topic": f"{mqtt_prefix}/set",
+                        "command_template": '{"channel": "{{value}}"}',
+                        "state_topic": f"{mqtt_prefix}/state",
+                        "value_template": "{{ value_json.channel }}",
+                        "availability_topic": f"{mqtt_prefix}/status",
+                        "options": channels,
+                        "unique_id": "digital-audio-switch-channel",
                         "device": mqtt_device,
                     }
                 ).encode(),
