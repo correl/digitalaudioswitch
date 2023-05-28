@@ -46,7 +46,7 @@ class CD4052:
         """
         a = channel & 0b01
         b = (channel & 0b10) >> 1
-        print(f"CD4052: Selecting Channel {channel} ({a}, {b})")
+        print(f"CD4052: Selecting Channel {channel}")
         mute = self._inh()
         self._inh.on()
         self._channel_select_a(a)
