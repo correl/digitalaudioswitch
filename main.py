@@ -4,6 +4,7 @@ import json
 import machine
 import network
 import ubinascii
+import uasyncio
 import utime
 
 from umqtt.simple import MQTTClient
@@ -11,6 +12,7 @@ from umqtt.simple import MQTTClient
 import cd4052
 import ssd1306
 import mcp4
+from button import Button
 from rotary_irq_esp import RotaryIRQ
 from statetree import StateTree
 
@@ -42,6 +44,7 @@ rotary = RotaryIRQ(
     pull_up=True,
 )
 rotary_value = rotary.value()
+rotary_button = Button(Pin(36, Pin.IN))
 
 try:
     i2c = SoftI2C(sda=Pin(21), scl=Pin(22))
@@ -91,7 +94,16 @@ def on_message(topic, msg):
 
 
 def loop():
-    global mqtt, state, last_update, rotary, rotary_value
+    global mqtt, state, last_update, rotary, rotary_button, rotary_value
+
+    rotary_button.update()
+    if rotary_button.was_clicked():
+        switch.toggle_mute()
+    if rotary_button.was_double_clicked():
+        if switch.channel() >= 3:
+            switch.select(0)
+        else:
+            switch.select(switch.channel() + 1)
 
     state["volume"]["left"] = pot.read(0)
     state["volume"]["right"] = pot.read(1)
@@ -275,4 +287,4 @@ def loop():
 
 while True:
     loop()
-    utime.sleep(0.1)
+    utime.sleep_ms(10)
