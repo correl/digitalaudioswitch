@@ -262,7 +262,13 @@ def loop():
         oled.text("R", 0, 10)
         oled.text(f"{state['volume']['left']:3d}", 104, 0)
         oled.text(f"{state['volume']['right']:3d}", 104, 10)
+        if state["volume"]["muted"]:
+            oled.framebuf.rect(40, 4, 4 * 8 + 2, 10, 0, True)
+            oled.framebuf.rect(39, 3, 4 * 8 + 4, 12, 1)
+            oled.framebuf.rect(38, 2, 4 * 8 + 6, 14, 0)
+            oled.text("MUTE", 41, 5)
         oled.text(f"WiFi: {state['network']}", 0, 20)
+        oled.text(f'{state["channel"]:>6}', 80, 20)
         oled.show()
     state.clean()
 
