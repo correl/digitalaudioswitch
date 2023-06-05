@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "Digital Audio Switch")(type "KiCad")(uri "${KIPRJMOD}/Digital Audio Switch.pretty")(options "")(descr ""))
+)
