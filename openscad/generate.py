@@ -1,5 +1,7 @@
 import sexpdata as s
 
+TOLERANCE = 0.2
+
 
 def cadr(x):
     return s.car(s.cdr(x))
@@ -31,9 +33,8 @@ width = end_x - start_x
 height = end_y - start_y
 print(
     f"""
-module board() {{
-    square([{width}, {height}]);
-}}
+pcb_width = {width};
+pcb_height = {height};
     """.strip()
 )
 
@@ -51,45 +52,9 @@ for hole in footprints:
         [[pad_x, pad_y]] = [s.cdr(x) for x in pad if s.car(x) == s.Symbol("at")]
         drills = [cadr(x) for x in pad if s.car(x) == s.Symbol("drill")]
         for diameter in drills:
-            # print([hole_x + pad_x, hole_y + pad_y, diameter])
             pos_x = (hole_x + pad_x) - start_x
             pos_y = (hole_y + pad_y) - start_y
-            holes.append((pos_x, pos_y, diameter))
+            holes.append([pos_x, pos_y, diameter])
 
-print("module mounting_holes() {")
-for pos_x, pos_y, diameter in holes:
-    print(f"translate([{pos_x}, {pos_y}]) circle(d={diameter});")
-print("}")
-
-print("module mounting_posts(r, h) {")
-for pos_x, pos_y, diameter in holes:
-    print(
-        " ".join(
-            [
-                f"translate([{pos_x}, {pos_y}]) ",
-                f"linear_extrude(h)",
-                f"circle(d={diameter} + (r * 2));",
-            ]
-        )
-    )
-
-print("}")
-
-print(
-    """
-module pcb(h=1) {
-    linear_extrude(h)
-    difference() {
-        board();
-        mounting_holes();
-    }
-}
-
-module mounting_supports(r, h) {
-    difference() {
-        mounting_posts(r=r, h=h);
-        linear_extrude(h+1) mounting_holes();
-    }
-}
-"""
-)
+# Y coordinates are inverted between KiCad and OpenSCAD
+print(f"drill_holes = {[[[x, -y + height], r] for x, y, r in holes]};")
