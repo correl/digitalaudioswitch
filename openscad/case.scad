@@ -2,6 +2,7 @@ $fn = 50;
 
 include <pcb_mount.scad>;
 
+MODE = "all"; // ["all", mounting_bracket", "case"]
 TOLERANCE=0.5;
 
 wall_width = 3;
@@ -14,18 +15,6 @@ pcb_thickness = 1.6;
 
 inside_offset = [wall_width + TOLERANCE + side_padding,wall_width + TOLERANCE,wall_width];
 
-color("purple")
-translate(inside_offset)
-pcb_mount(w=wall_width,h=pcb_spacing);
-
-color("green", 0.5)
-translate(inside_offset + [0,0,pcb_spacing]) {
-  difference() {
-    cube([pcb_width, pcb_height, pcb_thickness]);
-    translate([0,0,-0.5])
-      drill_hole_cutouts(h=pcb_thickness + 1);
-  }
-}
 module rounded_box(box, r) {
   hull() {
     cylinder(r=r,h=box.z);
@@ -38,15 +27,40 @@ module rounded_box(box, r) {
   }
 }
 
-difference() {
-  rounded_box(box=[case_width, case_depth, bottom_height], r=wall_width);
-  translate([wall_width,wall_width,wall_width + 1])
-    rounded_box(box=[pcb_width + (TOLERANCE * 2) + (side_padding * 2),
-                     pcb_height + (TOLERANCE * 2),
-                     bottom_height],
-                r=wall_width);
-  translate(inside_offset - [0,0,wall_width + 0.5]) {
-    drill_hole_cutouts(h=pcb_spacing);
-    posts(w=wall_width, h=wall_width/2 + 0.5);
+module case() {
+  difference() {
+    rounded_box(box=[case_width, case_depth, bottom_height], r=wall_width);
+    translate([wall_width,wall_width,wall_width + 1])
+      rounded_box(box=[pcb_width + (TOLERANCE * 2) + (side_padding * 2),
+                       pcb_height + (TOLERANCE * 2),
+                       bottom_height],
+                  r=wall_width);
+    translate(inside_offset - [0,0,wall_width + 0.5]) {
+      drill_hole_cutouts(h=pcb_spacing);
+      posts(w=wall_width, h=wall_width/2 + 0.5);
+    }
   }
+
 }
+
+if (MODE == "mounting_bracket") {
+  color("purple")
+    translate(inside_offset)
+    pcb_mount(w=wall_width,h=pcb_spacing);
+ } else if (MODE == "case" || MODE == "all") {
+ case();
+ if (MODE == "all") {
+   color("purple")
+     translate(inside_offset)
+     pcb_mount(w=wall_width,h=pcb_spacing);
+
+   color("green", 0.5)
+     translate(inside_offset + [0,0,pcb_spacing]) {
+     difference() {
+       cube([pcb_width, pcb_height, pcb_thickness]);
+       translate([0,0,-0.5])
+         drill_hole_cutouts(h=pcb_thickness + 1);
+     }
+   }
+ }
+ }
