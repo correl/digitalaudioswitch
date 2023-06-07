@@ -1,0 +1,39 @@
+#+title: Audio Input and Volume Control
+
+[[file:pcb.png]]
+* Features
+- Switches between three external inputs, outputting through the 3.5mm LINE OUT
+  jack.
+- Volume control and input switching can be done using the pressable dial on the front
+- Current status is displayed on a 128x32 OLED display
+- Can be fully controlled via Home Assistant as an [[https://www.home-assistant.io/integrations/mqtt/][MQTT-discoverable]] device.
+* Firmware
+** Configuration
+Create a file named =settings.json= in the project directory with WiFi and MQTT
+connection information.
+
+#+begin_src js
+  {
+      "wifi": {
+          "ssid": "MY-SSID",
+          "password": "my-wifi-password"
+      },
+      "mqtt": {
+          "broker": "192.168.1.123",
+          "prefix": "digital-audio-switch"
+      }
+  }
+#+end_src
+** Deploying
+Connect the ESP32 to your computer. If you haven't already, [[https://micropython.org/download/esp32/][flash it with the
+latest version of MicroPython]], and ensure you have [[https://docs.micropython.org/en/latest/reference/mpremote.html][mpremote installed]].
+
+Running =make= will install dependencies and copy the code and configuration to
+the ESP32, resetting it when done.
+* Circuit Design
+The schematic and board layout can be found in the [[file:kicad/][kicad]] folder.
+* Case
+The (incomplete) 3D-printable case is built using OpenSCAD and can be found in
+the [[file:openscad/][openscad]] folder. Running make in this directory will gather dimensions from
+the KiCAD design and generate STL files using them. The build tool requires
+Python 3 with the [[https://pypi.org/project/sexpdata/][sexpdata]] library installed to read the KiCAD files.
