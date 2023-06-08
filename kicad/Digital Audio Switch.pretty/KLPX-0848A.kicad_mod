@@ -35,4 +35,9 @@
     (stroke (width 0.381) (type solid)) (layer "F.Fab") (tstamp 6657e264-86bc-4352-94b0-c049d0533332))
   (pad "1" thru_hole oval (at 4.5 0) (size 3.5 5) (drill 3) (layers "*.Cu" "*.Mask") (tstamp 6581fcd8-0963-4571-8504-46e1cabe73a8))
   (pad "2" thru_hole oval (at 0 0) (size 4 5.5) (drill 3.3) (layers "*.Cu" "*.Mask") (tstamp 82f22a68-97aa-4238-84cd-c8df978d2858))
+  (model "${KIPRJMOD}/KLPX-0848A-2-x.IGS"
+    (offset (xyz -4.5 0 0))
+    (scale (xyz 1 1 1))
+    (rotate (xyz -90 0 90))
+  )
 )

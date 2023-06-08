@@ -2259,7 +2259,7 @@
     (property "Value" "ROTARY" (at 29.21 187.96 90)
       (effects (font (size 1.27 1.27)) (justify left))
     )
-    (property "Footprint" "Rotary_Encoder:RotaryEncoder_Bourns_Horizontal_PEC12R-2xxxF-Sxxxx" (at 26.924 182.88 0)
+    (property "Footprint" "Digital Audio Switch:RotaryEncoder_Bourns_Horizontal_PEC12R-2xxxF-Sxxxx" (at 26.924 182.88 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "~" (at 29.464 186.69 0)
