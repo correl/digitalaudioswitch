@@ -33,7 +33,7 @@ the ESP32, resetting it when done.
 * Circuit Design
 The schematic and board layout can be found in the [[file:kicad/][kicad]] folder.
 * Case
-The (incomplete) 3D-printable case is built using OpenSCAD and can be found in
-the [[file:openscad/][openscad]] folder. Running make in this directory will gather dimensions from
-the KiCAD design and generate STL files using them. The build tool requires
-Python 3 with the [[https://pypi.org/project/sexpdata/][sexpdata]] library installed to read the KiCAD files.
+The 3D-printable case is built using FreeCAD and can be found in the [[file:freecad/][freecad]]
+folder. It is divided into a top and bottom piece. The PCB is affixed using four
+M3 threaded inserts and 6mm M3 bolts, the case is assembled using 2 M3 threaded
+inserts and 2 10mm M3 bolts.
