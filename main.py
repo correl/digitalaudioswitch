@@ -42,6 +42,7 @@ rotary = RotaryIRQ(
     max_val=128,
     range_mode=RotaryIRQ.RANGE_BOUNDED,
     pull_up=True,
+    incr=4,
 )
 rotary_value = rotary.value()
 rotary_button = Button(Pin(36, Pin.IN))
