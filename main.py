@@ -74,6 +74,123 @@ mqtt_broker = settings["mqtt"]["broker"]
 mqtt_prefix = settings["mqtt"]["prefix"]
 
 
+def mqtt_init():
+    print("Starting MQTT client")
+    mqtt = MQTTClient(mqtt_client_id, mqtt_broker, keepalive=MQTT_KEEPALIVE)
+    mqtt.set_callback(on_message)
+    mqtt.set_last_will(f"{mqtt_prefix}/status", b"offline", retain=True)
+    mqtt.connect()
+    mqtt.subscribe(f"{mqtt_prefix}/set")
+    mqtt_device = {
+        "identifiers": mqtt_client_id,
+        "manufacturer": "correl",
+        "model": "digital-audio-switch",
+        "name": "Digital Audio Switch",
+    }
+
+    mqtt.publish(
+        f"homeassistant/number/digital-audio-switch/volume-left/config".encode(),
+        json.dumps(
+            {
+                "name": "Digital Audio Switch Volume (Left)",
+                "command_topic": f"{mqtt_prefix}/set",
+                "command_template": '{"volume": {"left": {{value}}}}',
+                "state_topic": f"{mqtt_prefix}/state",
+                "value_template": "{{ value_json.volume.left }}",
+                "availability_topic": f"{mqtt_prefix}/status",
+                "min": 0,
+                "max": VOLUME_MAX,
+                "mode": "slider",
+                "step": 1,
+                "unique_id": "digital-audio-switch-volume-left",
+                "device": mqtt_device,
+            }
+        ).encode(),
+        retain=True,
+    )
+    mqtt.publish(
+        f"homeassistant/number/digital-audio-switch/volume-right/config".encode(),
+        json.dumps(
+            {
+                "name": "Digital Audio Switch Volume (Right)",
+                "command_topic": f"{mqtt_prefix}/set",
+                "command_template": '{"volume": {"right": {{value}}}}',
+                "state_topic": f"{mqtt_prefix}/state",
+                "value_template": "{{ value_json.volume.right }}",
+                "availability_topic": f"{mqtt_prefix}/status",
+                "min": 0,
+                "max": VOLUME_MAX,
+                "mode": "slider",
+                "step": 1,
+                "unique_id": "digital-audio-switch-volume-right",
+                "device": mqtt_device,
+            }
+        ).encode(),
+        retain=True,
+    )
+    mqtt.publish(
+        f"homeassistant/number/digital-audio-switch/volume-master/config".encode(),
+        json.dumps(
+            {
+                "name": "Digital Audio Switch Volume (Master)",
+                "command_topic": f"{mqtt_prefix}/set",
+                "command_template": '{"volume": {"right": {{value}}, "left": {{value}}}}',
+                "state_topic": f"{mqtt_prefix}/state",
+                "value_template": """
+                            {%set values = value_json.volume.left,
+                                           value_json.volume.right %}
+                            {{ values|max }}
+                        """,
+                "availability_topic": f"{mqtt_prefix}/status",
+                "min": 0,
+                "max": VOLUME_MAX,
+                "mode": "slider",
+                "step": 1,
+                "unique_id": "digital-audio-switch-volume-master",
+                "device": mqtt_device,
+            }
+        ).encode(),
+        retain=True,
+    )
+    mqtt.publish(
+        f"homeassistant/switch/digital-audio-switch/mute/config".encode(),
+        json.dumps(
+            {
+                "name": "Digital Audio Switch Mute",
+                "command_topic": f"{mqtt_prefix}/set",
+                "payload_on": '{"volume": {"muted": "ON"}}',
+                "payload_off": '{"volume": {"muted": "OFF"}}',
+                "state_on": "ON",
+                "state_off": "OFF",
+                "state_topic": f"{mqtt_prefix}/state",
+                "value_template": "{{ value_json.volume.muted }}",
+                "availability_topic": f"{mqtt_prefix}/status",
+                "unique_id": "digital-audio-switch-volume-mute",
+                "device": mqtt_device,
+            }
+        ).encode(),
+        retain=True,
+    )
+    mqtt.publish(
+        f"homeassistant/select/digital-audio-switch/channel/config".encode(),
+        json.dumps(
+            {
+                "name": "Digital Audio Switch Channel",
+                "command_topic": f"{mqtt_prefix}/set",
+                "command_template": '{"channel": "{{value}}"}',
+                "state_topic": f"{mqtt_prefix}/state",
+                "value_template": "{{ value_json.channel }}",
+                "availability_topic": f"{mqtt_prefix}/status",
+                "options": channels,
+                "unique_id": "digital-audio-switch-channel",
+                "device": mqtt_device,
+            }
+        ).encode(),
+        retain=True,
+    )
+    return mqtt
+
+
 def on_message(topic, msg):
     print(f"MQTT <- [{topic}] {msg}")
     try:
@@ -138,129 +255,21 @@ def loop():
             print(f"WIFI Connected to {sta_if.config('ssid')}")
             print(f"IP Address: {ip}")
             state["network"] = "OK"
-        if not mqtt:
-            print("Starting MQTT client")
-            mqtt = MQTTClient(mqtt_client_id, mqtt_broker, keepalive=MQTT_KEEPALIVE)
-            mqtt.set_callback(on_message)
-            mqtt.set_last_will(f"{mqtt_prefix}/status", b"offline", retain=True)
-            mqtt.connect()
-            mqtt.subscribe(f"{mqtt_prefix}/set")
-            mqtt_device = {
-                "identifiers": mqtt_client_id,
-                "manufacturer": "correl",
-                "model": "digital-audio-switch",
-                "name": "Digital Audio Switch",
-            }
-
-            mqtt.publish(
-                f"homeassistant/number/digital-audio-switch/volume-left/config".encode(),
-                json.dumps(
-                    {
-                        "name": "Digital Audio Switch Volume (Left)",
-                        "command_topic": f"{mqtt_prefix}/set",
-                        "command_template": '{"volume": {"left": {{value}}}}',
-                        "state_topic": f"{mqtt_prefix}/state",
-                        "value_template": "{{ value_json.volume.left }}",
-                        "availability_topic": f"{mqtt_prefix}/status",
-                        "min": 0,
-                        "max": VOLUME_MAX,
-                        "mode": "slider",
-                        "step": 1,
-                        "unique_id": "digital-audio-switch-volume-left",
-                        "device": mqtt_device,
-                    }
-                ).encode(),
-                retain=True,
-            )
-            mqtt.publish(
-                f"homeassistant/number/digital-audio-switch/volume-right/config".encode(),
-                json.dumps(
-                    {
-                        "name": "Digital Audio Switch Volume (Right)",
-                        "command_topic": f"{mqtt_prefix}/set",
-                        "command_template": '{"volume": {"right": {{value}}}}',
-                        "state_topic": f"{mqtt_prefix}/state",
-                        "value_template": "{{ value_json.volume.right }}",
-                        "availability_topic": f"{mqtt_prefix}/status",
-                        "min": 0,
-                        "max": VOLUME_MAX,
-                        "mode": "slider",
-                        "step": 1,
-                        "unique_id": "digital-audio-switch-volume-right",
-                        "device": mqtt_device,
-                    }
-                ).encode(),
-                retain=True,
-            )
-            mqtt.publish(
-                f"homeassistant/number/digital-audio-switch/volume-master/config".encode(),
-                json.dumps(
-                    {
-                        "name": "Digital Audio Switch Volume (Master)",
-                        "command_topic": f"{mqtt_prefix}/set",
-                        "command_template": '{"volume": {"right": {{value}}, "left": {{value}}}}',
-                        "state_topic": f"{mqtt_prefix}/state",
-                        "value_template": """
-                            {%set values = value_json.volume.left,
-                                           value_json.volume.right %}
-                            {{ values|max }}
-                        """,
-                        "availability_topic": f"{mqtt_prefix}/status",
-                        "min": 0,
-                        "max": VOLUME_MAX,
-                        "mode": "slider",
-                        "step": 1,
-                        "unique_id": "digital-audio-switch-volume-master",
-                        "device": mqtt_device,
-                    }
-                ).encode(),
-                retain=True,
-            )
-            mqtt.publish(
-                f"homeassistant/switch/digital-audio-switch/mute/config".encode(),
-                json.dumps(
-                    {
-                        "name": "Digital Audio Switch Mute",
-                        "command_topic": f"{mqtt_prefix}/set",
-                        "payload_on": '{"volume": {"muted": "ON"}}',
-                        "payload_off": '{"volume": {"muted": "OFF"}}',
-                        "state_on": "ON",
-                        "state_off": "OFF",
-                        "state_topic": f"{mqtt_prefix}/state",
-                        "value_template": "{{ value_json.volume.muted }}",
-                        "availability_topic": f"{mqtt_prefix}/status",
-                        "unique_id": "digital-audio-switch-volume-mute",
-                        "device": mqtt_device,
-                    }
-                ).encode(),
-                retain=True,
-            )
-            mqtt.publish(
-                f"homeassistant/select/digital-audio-switch/channel/config".encode(),
-                json.dumps(
-                    {
-                        "name": "Digital Audio Switch Channel",
-                        "command_topic": f"{mqtt_prefix}/set",
-                        "command_template": '{"channel": "{{value}}"}',
-                        "state_topic": f"{mqtt_prefix}/state",
-                        "value_template": "{{ value_json.channel }}",
-                        "availability_topic": f"{mqtt_prefix}/status",
-                        "options": channels,
-                        "unique_id": "digital-audio-switch-channel",
-                        "device": mqtt_device,
-                    }
-                ).encode(),
-                retain=True,
-            )
-
-        if state.changed or utime.time() - last_update >= MQTT_UPDATE_INTERVAL:
-            topic = f"{mqtt_prefix}/state".encode()
-            payload = json.dumps(state.dictionary).encode()
-            print(f"MQTT -> [{topic}] {payload}")
-            mqtt.publish(f"{mqtt_prefix}/status", b"online", retain=True)
-            mqtt.publish(topic, payload, retain=True)
-            last_update = utime.time()
-        mqtt.check_msg()
+        if mqtt is None:
+            try:
+                mqtt = mqtt_init()
+            except OSError as e:
+                print(f"Failed to connect to MQTT: {e}")
+                mqtt = False
+        if mqtt:
+            if state.changed or utime.time() - last_update >= MQTT_UPDATE_INTERVAL:
+                topic = f"{mqtt_prefix}/state".encode()
+                payload = json.dumps(state.dictionary).encode()
+                print(f"MQTT -> [{topic}] {payload}")
+                mqtt.publish(f"{mqtt_prefix}/status", b"online", retain=True)
+                mqtt.publish(topic, payload, retain=True)
+                last_update = utime.time()
+            mqtt.check_msg()
     if oled and state.changed:
         oled.fill(0)
         oled.framebuf.rect(10, 0, 92, 8, 1)
