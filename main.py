@@ -20,6 +20,7 @@ VOLUME_MAX = const(128)
 
 MQTT_KEEPALIVE = const(60)
 MQTT_UPDATE_INTERVAL = const(60)
+MQTT_RECONNECT_INTERVAL = const(60)
 
 channels = ["LINE 1", "LINE 2", "LINE 3", "PHONO"]
 state = StateTree(
@@ -72,6 +73,7 @@ mqtt = None
 mqtt_client_id = ubinascii.hexlify(machine.unique_id())
 mqtt_broker = settings["mqtt"]["broker"]
 mqtt_prefix = settings["mqtt"]["prefix"]
+last_mqtt_attempt = 0
 
 
 def mqtt_init():
@@ -212,7 +214,8 @@ def on_message(topic, msg):
 
 
 def loop():
-    global mqtt, state, last_update, rotary, rotary_button, rotary_value
+    global mqtt, state, last_update, last_mqtt_attempt
+    global rotary, rotary_button, rotary_value
 
     rotary_button.update()
     if rotary_button.was_clicked():
@@ -250,17 +253,23 @@ def loop():
     if sta_if.active() and not sta_if.isconnected():
         state["network"] = "ACT"
     if sta_if.isconnected():
-        if state["network"] != "OK":
-            ip, _, _, _ = sta_if.ifconfig()
+        ip, _, _, _ = sta_if.ifconfig()
+        if ip == "0.0.0.0":
+            # Something went wrong, try to reconnect
+            print("IP invalid, retrying WiFi connection")
+            state["network"] = "ACT"
+            sta_if.active(True)
+            sta_if.connect(settings["wifi"]["ssid"], settings["wifi"]["password"])
+        elif state["network"] != "OK":
             print(f"WIFI Connected to {sta_if.config('ssid')}")
             print(f"IP Address: {ip}")
             state["network"] = "OK"
-        if mqtt is None:
+        if not mqtt and utime.time() - last_mqtt_attempt >= MQTT_RECONNECT_INTERVAL:
+            last_mqtt_attempt = utime.time()
             try:
                 mqtt = mqtt_init()
             except OSError as e:
-                print(f"Failed to connect to MQTT: {e}")
-                mqtt = False
+                print(f"Failed to connect to MQTT ({mqtt_broker}): {e}")
         if mqtt:
             if state.changed or utime.time() - last_update >= MQTT_UPDATE_INTERVAL:
                 topic = f"{mqtt_prefix}/state".encode()
