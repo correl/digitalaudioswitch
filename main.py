@@ -22,7 +22,7 @@ MQTT_KEEPALIVE = const(60)
 MQTT_UPDATE_INTERVAL = const(60)
 MQTT_RECONNECT_INTERVAL = const(60)
 
-channels = ["LINE 1", "LINE 2", "LINE 3", "PHONO"]
+channels = ["LINE 1", "LINE 2", "PHONO", "DAC"]
 state = StateTree(
     {
         "network": "OFF",
