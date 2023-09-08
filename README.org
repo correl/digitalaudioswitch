@@ -1,6 +1,7 @@
 #+title: Audio Input and Volume Control
 
-[[file:pcb.png]]
+[[file:finished.jpg]]
+
 * Features
 - Switches between three external inputs, outputting through the 3.5mm LINE OUT
   jack.
@@ -31,8 +32,12 @@ latest version of MicroPython]], and ensure you have [[https://docs.micropython.
 Running =make= will install dependencies and copy the code and configuration to
 the ESP32, resetting it when done.
 * Circuit Design
+[[file:pcb.png]]
+
 The schematic and board layout can be found in the [[file:kicad/][kicad]] folder.
 * Case
+[[file:case.png]]
+
 The 3D-printable case is built using FreeCAD and can be found in the [[file:freecad/][freecad]]
 folder. It is divided into a top and bottom piece. The PCB is affixed using four
 M3 threaded inserts and 6mm M3 bolts, the case is assembled using 2 M3 threaded
